@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LYRA's AI Cheatsheet & SPA Blueprint</title>
+    <link rel="icon" href="https://andiegogiap.com/assets/favicon.ico" sizes="any">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'lyra-dark': '#111827',
+              'lyra-dark-secondary': '#1F2937',
+              'lyra-light': '#F3F4F6',
+              'lyra-text': '#D1D5DB',
+              'lyra-text-secondary': '#9CA3AF',
+              'lyra-accent': '#38BDF8',
+              'lyra-accent-hover': '#0EA5E9',
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+                mono: ['Fira Code', 'monospace'],
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Add Babel for in-browser JSX/TSX transpilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react": "https://esm.sh/react@18.2.0",
+    "@google/genai": "https://esm.sh/@google/genai@0.14.0",
+    "marked": "https://esm.sh/marked@12.0.2"
+  }
+}
+</script>
+<style>
+    /* === Glass core (tiny, framework‑agnostic) ============================ */
+    :root{
+      /* tweak these to taste */
+      --glass-bg-rgb: 18,18,21;      /* dark surface behind the blur */
+      --glass-alpha: .28;            /* transparency */
+      --glass-blur: 18px;            /* blur radius */
+      --neon-a: 255,0,200;           /* pink */
+      --neon-b: 0,229,255;           /* cyan */
+    }
+    .glass{ 
+      background: rgba(var(--glass-bg-rgb), var(--glass-alpha));
+      backdrop-filter: blur(var(--glass-blur)) saturate(120%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(120%);
+      border: 1px solid rgba(255,255,255,.15);
+      box-shadow: 0 8px 30px rgba(0,0,0,.35);
+      border-radius: 16px;
+    }
+    /* neon border that doesn’t fill the inside (pure CSS, no images) */
+    .neon{ position: relative; }
+    .neon::before{
+      content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
+      background: linear-gradient(120deg, rgb(var(--neon-b)) 0%, rgb(var(--neon-a)) 50%, rgb(var(--neon-b)) 100%);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; /* punch the middle out */
+      pointer-events: none; filter: drop-shadow(0 0 8px rgba(var(--neon-a),.35));
+    }
+    /* intensity presets */
+    .glass-strong { --glass-alpha: .16; --glass-blur: 22px; }
+    .glass-subtle { --glass-alpha: .40; --glass-blur: 12px; }
+
+    /* Optional tiny utility padding to match your current HTML tokens */
+    .p-6{padding:1.5rem} .p-8{padding:2rem}
+    .grid{display:grid} .gap-6{gap:1.5rem}
+    .lg-grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .lg-col-span-1{grid-column:span 1 / span 1} .lg-col-span-2{grid-column:span 2 / span 2}
+
+    /* Demo page bg (can remove in real page) */
+    body{margin:0;min-height:100dvh;color:#F5F5F7;background:radial-gradient(1200px 600px at 10% -10%, #1e293b 0%, #0b0e11 60%),
+    url('https://images.dreamstime.com/las-vegas-nevada-april-vibrant-night-scene-strip-featuring-eiffel-tower-replica-colorful-hot-air-balloon-bustling-image339110456.jpg') center/cover fixed; background-blend-mode:overlay; font:16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif}
+    h1{margin:0 0 .5rem;font:700 2rem/1.2 Orbitron, system-ui, sans-serif}
+    .muted{color:#A9B1D6}
+
+    /* Styles for AI-generated markdown content */
+    .prose-lyra { color: #D1D5DB; }
+    .prose-lyra h1, .prose-lyra h2, .prose-lyra h3, .prose-lyra h4 { color: #F3F4F6; border-bottom: 1px solid #374151; padding-bottom: 0.3em; margin-top: 1.5em; margin-bottom: 1em; }
+    .prose-lyra p { margin-bottom: 1em; line-height: 1.6; }
+    .prose-lyra ul, .prose-lyra ol { margin-left: 1.5em; margin-bottom: 1em; list-style-position: outside; }
+    .prose-lyra li { margin-bottom: 0.5em; }
+    .prose-lyra code { background-color: rgba(31, 41, 55, 0.8); color: #FBBF24; padding: 0.2em 0.4em; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 0.9em; }
+    .prose-lyra pre { background-color: #1F2937; padding: 1em; border-radius: 8px; overflow-x: auto; border: 1px solid #374151; }
+    .prose-lyra pre code { background-color: transparent; color: inherit; padding: 0; }
+    .prose-lyra blockquote { border-left: 4px solid #38BDF8; padding-left: 1em; margin-left: 0; font-style: italic; color: #9CA3AF; }
+    .prose-lyra a { color: #38BDF8; text-decoration: none; }
+    .prose-lyra a:hover { text-decoration: underline; }
+  </style>
+</head>
+  <body>
+    <div id="root"></div>
+    <!-- Change script type to text/babel and add presets for Babel transpilation -->
+    <script type="text/babel" data-presets="react,typescript" data-type="module" src="/index.tsx"></script>
+  </body>
+</html>
