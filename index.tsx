@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { marked } from "marked";
 
 // --- Inlined constants.tsx ---
@@ -29,6 +29,12 @@ const SpaIcon = (props) => (
 const AIExplainerIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.553L16.5 21.75l-.398-1.197a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.197-.398a2.25 2.25 0 001.423-1.423L16.5 15.75l.398 1.197a2.25 2.25 0 001.423 1.423L19.5 18.75l-1.197.398a2.25 2.25 0 00-1.423 1.423z" />
+    </svg>
+);
+
+const CodeOptimizerIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
     </svg>
 );
 
@@ -215,6 +221,12 @@ const CONTENT_DATA = [
         title: 'AI Code Explainer',
         icon: AIExplainerIcon,
         content: [] // This section is rendered by a special component
+    },
+    {
+        id: 'code-optimizer',
+        title: 'AI Code Optimizer',
+        icon: CodeOptimizerIcon,
+        content: []
     },
     {
         id: 'spa-blueprint',
@@ -415,6 +427,153 @@ const CodeExplainer = () => {
     )
 };
 
+// --- Inlined components/CodeOptimizer.tsx ---
+const CodeOptimizer = () => {
+    const [code, setCode] = useState('');
+    const [result, setResult] = useState(null); // { optimizedCode: string, explanation: string }
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleOptimize = async () => {
+        if (!code.trim()) {
+            setError('Please enter some code to optimize.');
+            return;
+        }
+        setIsLoading(true);
+        setError('');
+        setResult(null);
+
+        try {
+            const prompt = `You are LYRA, an expert AI programming assistant specializing in code optimization. Your goal is to rewrite a given code snippet to be more performant, readable, and idiomatic, following modern best practices.
+
+**Instructions:**
+1.  Analyze the user's code for potential improvements in performance, readability, and conventions.
+2.  Provide a fully optimized and complete version of the code. Do not use placeholders like "// ... existing code".
+3.  Provide a clear, concise explanation of the changes you made and why they are improvements. Use markdown for formatting (e.g., lists, bolding).
+4.  Your response MUST be a valid JSON object with the schema provided. Do not add any extra text or markdown formatting around the JSON object.
+
+**Code to Optimize:**
+\`\`\`
+${code}
+\`\`\``;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                          optimizedCode: {
+                            type: Type.STRING,
+                            description: 'The full, optimized code snippet as a string.',
+                          },
+                          explanation: {
+                            type: Type.STRING,
+                            description: 'The markdown explanation of the changes.',
+                          },
+                        },
+                        required: ["optimizedCode", "explanation"],
+                    },
+                }
+            });
+
+            const responseText = response.text;
+            const parsedResult = JSON.parse(responseText);
+            
+            if (parsedResult.optimizedCode && parsedResult.explanation) {
+                setResult(parsedResult);
+            } else {
+                 throw new Error("AI response is missing required 'optimizedCode' or 'explanation' fields.");
+            }
+
+        } catch (e) {
+            console.error(e);
+            setError('An error occurred while optimizing the code. The AI response may have been malformed. Please try again.');
+            setResult(null);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    return (
+        <div className="max-w-4xl mx-auto">
+            <header className="mb-8">
+                <div className="flex items-center mb-2">
+                    <span className="text-lyra-accent mr-3"><CodeOptimizerIcon className="w-8 h-8" /></span>
+                    <h1 className="text-4xl font-extrabold text-lyra-light">AI Code Optimizer</h1>
+                </div>
+                <p className="text-lg text-lyra-text-secondary">Paste a code snippet and LYRA will refactor it for performance and readability.</p>
+            </header>
+    
+            <div className="glass p-6">
+                <label htmlFor="code-input-optimizer" className="block text-sm font-medium text-lyra-light mb-2">Your Code Snippet</label>
+                <textarea
+                    id="code-input-optimizer"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="Paste your code here to optimize..."
+                    className="w-full h-48 p-4 font-mono text-sm bg-lyra-dark-secondary text-lyra-text border border-gray-600 rounded-lg focus:ring-2 focus:ring-lyra-accent focus:border-lyra-accent transition duration-200 resize-y"
+                    aria-label="Code input for optimizer"
+                />
+                <button
+                    onClick={handleOptimize}
+                    disabled={isLoading}
+                    className="mt-4 px-6 py-3 w-full flex justify-center items-center font-semibold text-white bg-lyra-accent rounded-lg hover:bg-lyra-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-lyra-dark focus:ring-lyra-accent transition-all duration-200 disabled:bg-gray-500 disabled:cursor-not-allowed"
+                >
+                    {isLoading ? (
+                        <>
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Optimizing...
+                        </>
+                    ) : (
+                        'Optimize Code'
+                    )}
+                </button>
+            </div>
+    
+            {(result || isLoading || error) && (
+                <div className="mt-8">
+                    {isLoading && (
+                         <div className="glass p-6">
+                            <div className="flex flex-col items-center justify-center text-lyra-text-secondary p-8">
+                               <svg className="animate-spin h-8 w-8 text-lyra-accent mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                               </svg>
+                               <p className="text-lg">LYRA is refactoring your code...</p>
+                            </div>
+                        </div>
+                    )}
+                    {error && 
+                        <div className="glass p-6">
+                           <p className="text-red-400">{error}</p>
+                        </div>
+                    }
+                    {result && (
+                        <div className="space-y-8">
+                            <div>
+                                <h2 className="text-2xl font-semibold text-lyra-light mb-4 border-b border-gray-700 pb-2">Optimized Code</h2>
+                                <CodeBlock code={result.optimizedCode} language={""} />
+                            </div>
+                             <div>
+                                <h2 className="text-2xl font-semibold text-lyra-light mb-4 border-b border-gray-700 pb-2">Explanation</h2>
+                                <div className="glass p-6">
+                                    <div className="prose-lyra" dangerouslySetInnerHTML={{ __html: marked.parse(result.explanation) }} />
+                                </div>
+                             </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    )
+};
+
 
 // --- Inlined components/ContentDisplay.tsx ---
 const renderContentItem = (item, index) => {
@@ -468,6 +627,9 @@ const renderContentItem = (item, index) => {
 const ContentDisplay = ({ section }) => {
   if (section.id === 'code-explainer') {
     return <CodeExplainer />;
+  }
+  if (section.id === 'code-optimizer') {
+    return <CodeOptimizer />;
   }
 
   return (
